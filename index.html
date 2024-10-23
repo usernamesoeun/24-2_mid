@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>쓰레기 줍기 게임</title>
+    <style>
+
+@font-face {
+    font-family: 'ClimateCrisisKR-1979';
+    src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2212@1.0/ClimateCrisisKR-1979.woff2') format('woff2');
+    font-weight: 900;
+    font-style: normal;
+}
+
+        body { font-family: Arial, sans-serif; text-align: center; margin: 0; padding: 0; overflow: hidden; }
+
+        h1{ font-family:'ClimateCrisisKR-1979'; }
+
+
+        .section { display: none; }
+        #game { display: none; position: relative; width: 100vw; height: 100vh; background-color: #f0f0f0; }
+        #basket { width: 150px; height: 50px; background: brown; position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); }
+        .trash { width: 30px; height: 30px; background: black; position: absolute; top: 0; }
+        #timer, #score { position: absolute; top: 10px; left: 10px; }
+        #score { left: auto; right: 10px; }
+
+
+    button{margin: auto;
+        border: none;
+        display: block;
+        text-decoration: none;
+        border-radius: 30px;
+        background-color: black;
+        color: whitesmoke;
+    }
+
+    button:hover{
+
+    }
+    img{object-fit: cover; width: 50%; height:50%}
+
+
+
+    </style>
+</head>
+<body>
+
+    <!-- 인트로 화면들 -->
+    <div id="intro1" class="section">
+        <h2>옛날옛날 사과를 아주 좋아하던 왕비님이 있었습니다</h2>
+        <button onclick="nextIntro(2)">Next</button>
+        <img src="intro1.png" alt="Intro 1 Image">
+    </div>
+
+    <div id="intro2" class="section">
+        <h2>그런데 웬걸, 사과 값이 갑자기 폭등했지 뭐에요</h2>
+        <button onclick="nextIntro(3)">Next</button>
+         <img src="intro2.png" alt="Intro 2 Image">
+    </div>
+
+    <div id="intro3" class="section">
+        <h2>알고보니 호냉성 식물인 사과가 기후변화로 인해 사라질 위기에 처해있었습니다</h2>
+        <p>cf)호냉성 식물: 20도 이하의 온도에서 생존할 수 있는 식물</p>
+        <button onclick="nextIntro(4)">Next</button>
+        <img src="intro3.png" alt="Intro 3 Image">
+    </div>
+
+    <div id="intro4" class="section">
+        <h2>과연 왕비님은 기후변화를 막아 맛있는 사과를 지킬 수 있을까요?</h2>
+        <button onclick="startGame()">Start Game</button>
+        <img src="intro4.png" alt="Intro 4 Image">
+    </div>
+
+    <!-- 게임 화면 -->
+    <div id="game" class="section">
+        <h1>쓰레기를 담아라</h1>
+        <p>시간 내에 10개의 쓰레기를 담으면 성공!</p>
+        <div id="basket"></div>
+        <div id="timer">Time: 25s</div>
+        <div id="score">Score: 0</div>
+    </div>
+
+    <!-- 성공 화면 -->
+    <div id="success" class="section">
+        <h2>성공!</h2>
+        <h3>왕비님은 맛있는 사과도 지키고 지구도 지킬 수 있었답니다</h3>
+        <img src="success.png" alt="Success Image">
+        <button onclick="restartGame()">Restart</button>
+    </div>
+
+    <!-- 실패 화면 -->
+    <div id="failure" class="section">
+        <h2>안타깝군요</h2>
+        <h3>왕비님이 좋아하는 사과는 그렇게 영영 전설 속으로 사라졌답니다</h3>
+        <img src="failure.png" alt="Failure Image">
+        <button onclick="restartGame('skipIntro')">Restart</button>
+    </div>
+
+    <script>
+        let score = 0;
+        let timeLeft = 25;
+        let trashSpeed = 2;
+        let trashInterval;
+        const basket = document.getElementById('basket');
+        const gameArea = document.getElementById('game');
+        const gameWidth = window.innerWidth;
+        const gameHeight = window.innerHeight;
+
+        // 인트로 순서 제어
+        function nextIntro(introNumber) {
+            document.querySelectorAll('.section').forEach(section => section.style.display = 'none');
+            document.getElementById('intro' + introNumber).style.display = 'block';
+        }
+
+        // 게임 시작
+        function startGame() {
+            resetGame(); // 게임 상태 초기화
+            document.querySelectorAll('.section').forEach(section => section.style.display = 'none');
+            document.getElementById('game').style.display = 'block';
+            startTimer();
+            startTrashFall();
+            document.addEventListener('keydown', moveBasket); // 바구니 조작 이벤트 등록
+        }
+
+        // 타이머 및 게임 로직
+        function startTimer() {
+            let timer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').innerText = `Time: ${timeLeft}s`;
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    clearInterval(trashInterval);
+                    document.removeEventListener('keydown', moveBasket);
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function startTrashFall() {
+            trashInterval = setInterval(() => {
+                createTrash(); // 새로운 쓰레기 생성
+            }, 2000); // 2초마다 새로운 쓰레기
+        }
+
+        function createTrash() {
+            // 쓰레기 생성
+            const trash = document.createElement('div');
+            trash.classList.add('trash');
+            gameArea.appendChild(trash);
+
+            // 쓰레기의 초기 위치
+            let trashX = Math.random() * (gameWidth - 30); // 랜덤 위치에서 쓰레기 생성
+            trash.style.left = `${trashX}px`;
+            trash.style.top = '0px';
+
+            // 쓰레기 떨어지기
+            let fall = setInterval(() => {
+                let trashTop = parseInt(trash.style.top);
+                if (trashTop >= gameHeight - basket.offsetHeight - 50 && checkCollision(trash)) { 
+                    // 바구니에 닿으면 점수 증가
+                    score++;
+                    document.getElementById('score').innerText = `Score: ${score}`;
+                    trash.remove(); // 쓰레기 제거
+                    clearInterval(fall);
+                    if (score >= 10) {
+                        clearInterval(trashInterval);
+                        endGame();
+                    }
+                } else if (trashTop >= gameHeight - 30) { // 쓰레기가 바닥에 도달하면 쓰레기 제거
+                    trash.remove();
+                    clearInterval(fall);
+                } else {
+                    trash.style.top = `${trashTop + trashSpeed}px`; // 쓰레기 계속 떨어지기
+                }
+            }, 20);
+        }
+
+        // 바구니 조작 (좌우 화살표)
+        function moveBasket(event) {
+            let currentLeft = parseInt(window.getComputedStyle(basket).left);
+            if (event.key === 'ArrowLeft' && currentLeft > 0) {
+                basket.style.left = `${currentLeft - 20}px`;
+            } else if (event.key === 'ArrowRight' && currentLeft + basket.offsetWidth < gameWidth) {
+                basket.style.left = `${currentLeft + 20}px`;
+            }
+        }
+
+        // 충돌 체크
+        function checkCollision(trash) {
+            const trashRect = trash.getBoundingClientRect();
+            const basketRect = basket.getBoundingClientRect();
+            return !(
+                trashRect.bottom < basketRect.top ||
+                trashRect.top > basketRect.bottom ||
+                trashRect.right < basketRect.left ||
+                trashRect.left > basketRect.right
+            );
+        }
+
+        // 게임 종료
+        function endGame() {
+            document.querySelectorAll('.section').forEach(section => section.style.display = 'none');
+            if (score >= 10) {
+                document.getElementById('success').style.display = 'block';
+            } else {
+                document.getElementById('failure').style.display = 'block';
+            }
+        }
+
+        // 게임 다시 시작
+        function restartGame(skipIntro = '') {
+            score = 0;
+            timeLeft = 25;
+            if (skipIntro === 'skipIntro') {
+                startGame(); // 인트로 없이 바로 게임 시작
+            } else {
+                nextIntro(1); // 인트로부터 시작
+            }
+        }
+
+        // 게임 상태 초기화
+        function resetGame() {
+            score = 0;
+            timeLeft = 25;
+            document.getElementById('score').innerText = `Score: 0`;
+            document.getElementById('timer').innerText = `Time: 25s`;
+        }
+
+        // 초기 인트로 표시
+        nextIntro(1); // 첫 번째 인트로 표시
+
+    </script>
+</body>
+</html>
